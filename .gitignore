@@ -1,0 +1,18 @@
+# Ignore Python bytecode files
+__pycache__/
+*.pyc
+
+# Ignore virtual environments
+venv/
+.venv/
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+
+# Ignore video or large output files (Manim-generated)
+*.mp4
+*.avi
+
+# Ignore Jupyter Notebook checkpoints (if any)
+.ipynb_checkpoints/
