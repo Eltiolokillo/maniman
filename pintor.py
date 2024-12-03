@@ -2,30 +2,57 @@ from manim import *
 import json
 from random import uniform
 
+from maniman import Hilo
+from maniman.objetos import *
+
 def load_config(file_path):
     with open(file_path, 'r') as f:
         return json.load(f)
 config = load_config("config.json")
 
 class Pintor:
-    def __init__(self, md, show_semaf, recursos, cola):
+    def __init__(self, md, show_semaf, recursos, cola, grupo):
         self.md = md
         self.show_semaf = show_semaf
         self.recursos = recursos
         self.cola = cola
-        
-    def dibujar_hilo(self, hilo):
-        # Crear línea y etiqueta del hilo
+        self.grupo = grupo
+        self.n_hilos = 0
+    
+    def dibujar_main(self):
+        main = Hilo("main")
+        main.posicion = ORIGIN + UP*1
+        main.linea = Line(main.posicion, main.posicion + DOWN * 20 + DOWN * (uniform(-0.4,0.4)), color=config["color_linea_hilo"])
+        main.label = Text(main.nombre, color=config["color_label_hilo"]).next_to(main.linea, UP).scale(0.5)
+        main.posicion = 0
+        self.grupo.add(main)
+        self.n_hilos += 1
+        return main
+
+    def start(self, origen, destino):
+        dest = self.dibujar_hilo(f"{destino}")
+        trigger = Rectangulo(f"start({destino.nombre})")
+        arrow = Flecha(trigger.get_right(), dest.linea.get_start())
+        start = VGroup(trigger, arrow)
+        start.move_to(origen.linea.get_start() + DOWN * origen.count + DOWN * (uniform(-0.4,0.4)) - trigger.get_center())
+        origen.total.add(start)
+        origen.count += 1
+        return dest
+
+    def dibujar_hilo(self, name):
+        '''Dibuja un hilo en la pantalla
+        y crea un objeto hilo'''
+        hilo = Hilo(name)
         hilo.linea = Line(hilo.posicion, hilo.posicion + DOWN * 20 + DOWN * (uniform(-0.4,0.4)), color=config["color_linea_hilo"])
         hilo.label = Text(hilo.nombre, color=config["color_label_hilo"]).next_to(hilo.linea, UP).scale(0.5)
         hilo.juntar()
+        self.grupo.add(hilo)
+        return hilo
 
     def sleep(self, hilo, n):
-        texto = Text(f"sleep({n})").move_to(hilo.linea.get_start() + DOWN * hilo.count + DOWN * (uniform(-0.4,0.4))).scale(0.2).set_z_index(2)
-        box = SurroundingRectangle(texto,stroke_width=config["borde_box"],color=config["color_box"]).set_z_index(1).set_fill(BLACK, opacity=1)
-        sleep = VGroup(texto, box)
-        hilo.sleeps.append(sleep)
-        hilo.juntar()
+        sleep = Rectangulo(f"sleep({n})")
+        sleep.move_to(hilo.linea.get_start() + DOWN * hilo.count + DOWN * (uniform(-0.4,0.4)) - sleep.get_center())
+        hilo.total.add(sleep)
         hilo.count += n
 
 
@@ -98,7 +125,7 @@ class Pintor:
             hilo.juntar()
             hilo.count += 1
 
-
+    '''
     def start(self, origen, destino):
         texto = Text(f"start({destino.nombre})").move_to(origen.linea.get_start() + DOWN * origen.count + DOWN * (uniform(-0.4,0.4))).scale(0.2).set_z_index(2)
         box = SurroundingRectangle(texto,stroke_width=config["borde_box"],color=config["color_box"]).set_z_index(1).set_fill(BLACK, opacity=1)
@@ -122,21 +149,17 @@ class Pintor:
         origen.starts.append(start)
         origen.juntar()
         origen.count += 1
-
+        '''
 
     def critic(self, hilo):    
-        texto = Text("SecCritic").move_to(hilo.linea.get_start() + DOWN * hilo.count + DOWN * (uniform(-0.4,0.4))).scale(0.2).set_z_index(2)
-        box = SurroundingRectangle(texto,stroke_width=config["borde_box"],color=config["color_box"]).set_z_index(1).set_fill(BLACK, opacity=1)
-        critic = VGroup(texto, box)
-        hilo.criticas.append(critic)
-        hilo.juntar()
+        critic = Rectangulo(f"critic")
+        critic.move_to(hilo.linea.get_start() + DOWN * hilo.count + DOWN * (uniform(-0.4,0.4)) - critic.get_center())
+        hilo.total.add(critic)
         hilo.count += 1
 
     def join(self, origen, destino):
-        texto = Text(f"join({destino.nombre})").move_to(origen.linea.get_start() + DOWN * origen.count + DOWN * (uniform(-0.4,0.4))).scale(0.2).set_z_index(2)
-        box = SurroundingRectangle(texto,stroke_width=config["borde_box"],color=config["color_box"]).set_z_index(1).set_fill(BLACK, opacity=1)
-        join = VGroup(texto,box)
-        origen.joins.append(join)
+        join = Rectangulo(f"join({destino.nombre})")
+        join.move_to(origen.linea.get_start() + DOWN * origen.count + DOWN * (uniform(-0.4,0.4)) - join.get_center())
+        origen.total.add(join)
         destino.joinedby.append(origen)
-        origen.juntar()
         origen.count += 1

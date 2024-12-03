@@ -24,6 +24,29 @@ grupo = VGroup()
 
 def main():
 
+    '''
+
+    main = pt.dibujar_main
+    a = pt.start(main,a)
+    b = pt.start(main,b)
+    pt.join(main,a)
+    pt.join(main,b)
+
+    pt.create_semaforo(semaforo, 1)
+    pt.await_(a,semaforo)
+    c = pt.start(a, c)
+    pt.sleep(a, 2)
+    pt.signal(a,semaforo)
+    pt.join(a, c)
+
+    pt.critic(b)
+
+    pt.await_(c,semaforo)
+    pt.critic(c)
+    pt.signal(c,semaforo)
+
+    '''
+
     # Todo dibujo tiene main y semaforo. Este último se puede ocultar
     a = Hilo("a")
     b = Hilo("b")
@@ -48,7 +71,7 @@ def main():
     show_semaf = True
     cola = []
     md = Modificador()
-    pt = Pintor(md, show_semaf, recursos, cola)
+    pt = Pintor(md, show_semaf, recursos, cola, grupo)
         
     # Dibujar hilos y semáforo
     for hilo in [main] +  hilos:

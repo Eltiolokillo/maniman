@@ -3,7 +3,7 @@ from manim import *
 class Hilo:
     def __init__(self, nombre):
         self.nombre = nombre
-        self.posicion = ORIGIN  # Posición inicial (se ajustará dinámicamente)
+        self.posicion = ORIGIN  
         self.linea = None
         self.label = None
         self.starts = []
@@ -14,10 +14,9 @@ class Hilo:
         self.criticas = []
         self.total = VGroup()
         self.count = 1
-        self.joinedby = []  # Lista de hilos que hacen join sobre este
+        self.joinedby = []  
 
     def juntar(self):
-        # Usamos un set para evitar duplicados
         elementos_unicos = set(
             [self.linea, self.label]
             + [item for sublist in self.starts for item in sublist]
@@ -28,3 +27,9 @@ class Hilo:
             + [item for sublist in self.criticas for item in sublist]
         )
         self.total = VGroup(*elementos_unicos)
+
+class Semaforo(Hilo):
+    def __init__(self, nombre, recursos):
+        super().__init__(nombre)
+        self.recursos = recursos
+        self.cola = []
