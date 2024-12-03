@@ -11,7 +11,11 @@ class Escenax(MovingCameraScene):
         start.shift([2,2,0] - trigger.get_center())
         grid = NumberPlane()
 
+        texto = Text("CAMBIOS")
+
         self.play(Create(grid))
+
+        self.play(Create(texto))
 
         self.play(Create(control), Create(start))
         self.wait(2)
