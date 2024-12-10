@@ -2,13 +2,10 @@ from manim import *
 import json
 from random import uniform
 
-from maniman import Hilo
-from maniman.objetos import *
+from hilo import *
+from objetos import *
 
-def load_config(file_path):
-    with open(file_path, 'r') as f:
-        return json.load(f)
-config = load_config("config.json")
+from config import visuals
 
 class Pintor:
     def __init__(self, md, show_semaf, recursos, cola, grupo):
@@ -22,31 +19,36 @@ class Pintor:
     def dibujar_main(self):
         main = Hilo("main")
         main.posicion = ORIGIN + UP*1
-        main.linea = Line(main.posicion, main.posicion + DOWN * 20 + DOWN * (uniform(-0.4,0.4)), color=config["color_linea_hilo"])
-        main.label = Text(main.nombre, color=config["color_label_hilo"]).next_to(main.linea, UP).scale(0.5)
+        main.linea = Line(ORIGIN, ORIGIN + DOWN * 20 + DOWN * (uniform(-0.4,0.4)), color=visuals["color_linea_hilo"])
+        main.label = Text(main.nombre, color=visuals["color_label_hilo"]).next_to(main.linea, UP).scale(0.5)
         main.posicion = 0
-        self.grupo.add(main)
+        main.juntar()
+        self.grupo.add(main.total)
         self.n_hilos += 1
         return main
 
-    def start(self, origen, destino):
-        dest = self.dibujar_hilo(f"{destino}")
-        trigger = Rectangulo(f"start({destino.nombre})")
+    def start(self, origen, nombre):
+        self.n_hilos += 1
+        dest = self.dibujar_hilo(f"{nombre}")
+        trigger = Rectangulo(f"start({nombre})")
         arrow = Flecha(trigger.get_right(), dest.linea.get_start())
         start = VGroup(trigger, arrow)
-        start.move_to(origen.linea.get_start() + DOWN * origen.count + DOWN * (uniform(-0.4,0.4)) - trigger.get_center())
-        origen.total.add(start)
-        origen.count += 1
+        control = Dot(origen.linea.get_start())
+        control2 = Dot(origen.linea.get_start() + DOWN * origen.count + DOWN * (uniform(-0.4,0.4)) - trigger.get_center(), color=RED).set_z_index(4)
+        start.shift(origen.linea.get_start() + DOWN * origen.count + DOWN * (uniform(-0.4,0.4)) - trigger.get_center())
+        origen.add_start(start)
+        self.grupo.add(start, control, control2)
         return dest
 
     def dibujar_hilo(self, name):
         '''Dibuja un hilo en la pantalla
         y crea un objeto hilo'''
         hilo = Hilo(name)
-        hilo.linea = Line(hilo.posicion, hilo.posicion + DOWN * 20 + DOWN * (uniform(-0.4,0.4)), color=config["color_linea_hilo"])
-        hilo.label = Text(hilo.nombre, color=config["color_label_hilo"]).next_to(hilo.linea, UP).scale(0.5)
+        hilo.posicion = RIGHT * (self.n_hilos - 1) * 2  + DOWN * (uniform(-0.4,0.4))
+        hilo.linea = Line(hilo.posicion, hilo.posicion + DOWN * 20, color=visuals["color_linea_hilo"])
+        hilo.label = Text(hilo.nombre, color=visuals["color_label_hilo"]).next_to(hilo.linea, UP).scale(0.5)
         hilo.juntar()
-        self.grupo.add(hilo)
+        self.grupo.add(hilo.total)
         return hilo
 
     def sleep(self, hilo, n):
@@ -61,7 +63,7 @@ class Pintor:
             num = VGroup()
             cola_label = VGroup()
             texto = Text("await").move_to(hilo.linea.get_start() + DOWN * hilo.count + DOWN * (uniform(-0.4,0.4))).scale(0.2).set_z_index(2)
-            box = SurroundingRectangle(texto,stroke_width=config["borde_box"],color=config["color_box"]).set_z_index(1).set_fill(BLACK, opacity=1)
+            box = SurroundingRectangle(texto,stroke_width=visuals["borde_box"],color=visuals["color_box"]).set_z_index(1).set_fill(BLACK, opacity=1)
             flecha = DashedLine(
                 start=box.get_center(),
                 end=[destino.linea.get_x(), box.get_y(), 0],
@@ -96,7 +98,7 @@ class Pintor:
             num = VGroup()
             cola_label = VGroup()
             texto = Text("signal").move_to(hilo.linea.get_start() + DOWN * hilo.count + DOWN * (uniform(-0.4,0.4))).scale(0.2).set_z_index(2)
-            box = SurroundingRectangle(texto,stroke_width=config["borde_box"],color=config["color_box"]).set_z_index(1).set_fill(BLACK, opacity=1)
+            box = SurroundingRectangle(texto,stroke_width=visuals["borde_box"],color=visuals["color_box"]).set_z_index(1).set_fill(BLACK, opacity=1)
             flecha = DashedLine(
                 start=[destino.linea.get_x(), box.get_y(), 0],
                 end=box.get_center(),
@@ -128,7 +130,7 @@ class Pintor:
     '''
     def start(self, origen, destino):
         texto = Text(f"start({destino.nombre})").move_to(origen.linea.get_start() + DOWN * origen.count + DOWN * (uniform(-0.4,0.4))).scale(0.2).set_z_index(2)
-        box = SurroundingRectangle(texto,stroke_width=config["borde_box"],color=config["color_box"]).set_z_index(1).set_fill(BLACK, opacity=1)
+        box = SurroundingRectangle(texto,stroke_width=visuals["borde_box"],color=visuals["color_box"]).set_z_index(1).set_fill(BLACK, opacity=1)
         flecha = DashedLine(
             start=box.get_center(),
             end=[destino.linea.get_x(), box.get_y(), 0],

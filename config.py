@@ -1,4 +1,4 @@
-{
+visuals ={
     "color_linea_main" : "WHITE",
     "color_label_main" : "WHITE",
     "color_linea_semaforo" : "WHITE",

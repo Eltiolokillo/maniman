@@ -1,24 +1,17 @@
 import json
 from manim import *
-from maniman.escena import Escena
-from maniman.hilo import Hilo
-from maniman.modificador import Modificador
-from maniman.pintor import Pintor
-from maniman.hilo import *
+from escena import *
+from hilo import *
+from modificador import *
+from pintor import *
 from PIL import Image
+
+from config import visuals
 
 import os
 
 # Calidad de la animación
 config.quality = "high_quality"
-
-
-# Cargar fichero con configuración de apariencias
-def load_config(file_path):
-    with open(file_path, 'r') as f:
-        return json.load(f)
-config = load_config("config.json")
-
 
 grupo = VGroup()
 
@@ -46,7 +39,7 @@ def main():
     pt.signal(c,semaforo)
 
     '''
-
+    '''
     # Todo dibujo tiene main y semaforo. Este último se puede ocultar
     a = Hilo("a")
     b = Hilo("b")
@@ -109,6 +102,31 @@ def main():
     # Grupo principal
     grupo = VGroup(*[hilo.total for hilo in [main] + [semaforo] + hilos])
     
+    '''
+    show_semaf = True
+    cola = []
+    recursos = 1
+    md = Modificador()
+    pt = Pintor(md, show_semaf, recursos, cola, grupo)
+
+    main = pt.dibujar_main()
+    a = pt.start(main, "a")
+    b = pt.start(main, "b")
+    #pt.join(main,a)
+    #pt.join(main,b)
+
+    #pt.create_semaforo(semaforo, 1)
+    #pt.await_(a,semaforo)
+    #c = pt.start(a, c)
+    #pt.sleep(a, 2)
+    #pt.signal(a,semaforo)
+    #pt.join(a, c)
+
+    #pt.critic(b)
+
+    #pt.await_(c,semaforo)
+    #pt.critic(c)
+    #pt.signal(c,semaforo)
 
     # Renderizar la escena
     scene = Escena(grupo)
