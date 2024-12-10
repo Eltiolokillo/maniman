@@ -9,10 +9,9 @@ class Escenax(MovingCameraScene):
         
         grid = NumberPlane()
 
-        objeto = Triangle(color = visuals["color_linea_hilo"]).shift(UP)
-        obgeto = Triangle(color = visuals["color_linea_hilo"]).shift(DOWN)
-
         self.play(Create(grid))
 
-        self.play(Create(obgeto), Create(objeto))
+        self.play(Create(texto))
+
+        self.play(Create(control), Create(start))
         self.wait(2)
