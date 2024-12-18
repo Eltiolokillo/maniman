@@ -142,5 +142,7 @@ def guardar_imagen_final(scene, file_path="media\\videos\\1080p60\\escena.png"):
     image.save(file_path)
 
 
+
 if __name__ == "__main__":
     main()
+
