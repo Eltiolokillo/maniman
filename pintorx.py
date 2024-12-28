@@ -2,8 +2,8 @@ from manim import *
 import json
 from random import uniform
 
-from hilo import *
 from objetos import *
+from objetosx import *
 
 from config import visuals
 

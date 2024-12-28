@@ -1,10 +1,11 @@
 from manim import *
 
 class Escena(MovingCameraScene):
-    def __init__(self, grupo):
+    def __init__(self):
         super().__init__()
-        self.grupo = grupo
-    
+        self.n_hilos = 0
+        self.n_semaforos = 0
+
     def construct(self):
         # Renderizar animación
         #grid = NumberPlane()
