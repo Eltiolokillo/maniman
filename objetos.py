@@ -1,3 +1,4 @@
+from typing import Any
 from manim import *
 
 class Hilo:
@@ -11,7 +12,40 @@ class Hilo:
         self.joinedby = []
         self.t = 1
         self.total = VGroup()
-        self.bloqueado_en = 0
+        self.bloqueado_desde = 0
+        self.acabado = False
+        self.tramos = []
+
+    def inicio_tramo(self, t, tipo):
+        if self.tramos and self.tramos[-1].final is None:
+            raise ValueError("Ya hay un tramo iniciado sin finalizar.")
+        self.tramos.append(Tramo(t,tipo))  # Añade el inicio del tramo con tipo
+
+    def fin_tramo(self, t):
+        if not self.tramos or self.tramos[-1].final is not None:
+            raise ValueError("No hay un tramo iniciado para terminar.")
+        self.tramos[-1].final = t  # Establece el fin del último tramo iniciado
+
+    def imprimir_tramos(self):
+        """
+        Imprime todos los tramos del hilo con su información.
+        """
+        if not self.tramos:
+            print(f"Hilo {self.nombre} no tiene tramos registrados.")
+        else:
+            print(f"Tramos del Hilo {self.nombre}:")
+            for i, tramo in enumerate(self.tramos, 1):
+                inicio = tramo.t
+                fin = tramo.final if tramo.final is not None else "No finalizado"
+                tipo = tramo.tipo
+                print(f"  Tramo {i}: Inicio={inicio}, Fin={fin}, Tipo={tipo}")
+
+class Tramo:
+    def __init__(self, inicio, tipo):
+        self.t = inicio
+        self.final = None
+        self.tipo = tipo
+        self.hilo = None
 
     # Redefinir == para que compare nombres
     '''def __eq__(self, other):
@@ -24,6 +58,19 @@ class Semaforo(Hilo):
         super().__init__(nombre)
         self.recursos = recursos
         self.bloqueados = []
+        self.acciones_encola = []
+        self.estado = 'libre'
+
+    def cambiar_semaforo(self, sem, nuevos_recursos, t):
+        tipo_nuevo = "bien" if nuevos_recursos > 0 else "bloq"
+
+        # Si ultimo tramo es distinto al nuevo lo cambia
+        if not self.tramos[-1].tipo == tipo_nuevo:
+            # Finaliza el tramo actual y comienza uno nuevo con el nuevo tipo
+            if self.tramos and self.tramos[-1].final is None:
+                self.fin_tramo(t)
+                self.inicio_tramo(t, tipo_nuevo)
+
 
 class Accion:
     def __init__(self, hilo, texto):
@@ -52,6 +99,8 @@ class Await:
         self.t = origen.t
         self.semaforo = destino
         self.t_bloqueo = 0
+        self.recurso_final = 0
+        self.cola_final = 0
 
 class Signal:
     def __init__(self, origen, destino):
@@ -59,6 +108,8 @@ class Signal:
         self.t = origen.t
         self.semaforo = destino
         self.t_bloqueo = 0
+        self.recurso_final = 0
+        self.cola_final = 0
 
 class Join:
     def __init__(self, origen, destino):

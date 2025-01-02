@@ -4,28 +4,45 @@ import copy
 
 from objetos import *
 from escena import *
+from visuales import *
 
 
 class Diagrama:
+    """
+    N_hilos: cuenta main pero no semaforos. Sirve para saber coordenada x de hilos
+    N_semaforos: coordenada x de semaforos
+    Acciones: acciones del programa: start, join, sleep, await, end etc.
+    Elementos: acciones + tramos para convertir a Manim
+    """
     def __init__(self):
         self.n_hilos = 0
         self.n_semaforos = 0
         self.hilos = []
+        self.new_hilos = []
         self.semaforos = []
         self.acciones = []
+        self.elementos = []
+        self.grupos = []
 
+    """
+    Se crea hilo que empieza arriba (x = 0)
+    """
     def new_thread(self, name):
         hilo = Hilo(name)
         hilo.x = self.n_hilos
         hilo.y = 0
         self.n_hilos += 1
         self.hilos.append(hilo)
+        self.new_hilos.append(hilo)
+        hilo.inicio_tramo(0, 'bien')
         return hilo
 
     def new_semaphore(self, name, value):
         self.n_semaforos += 1
         s = Semaforo(name, value)
+        s.x = self.n_semaforos
         self.semaforos.append(s)
+        s.inicio_tramo(0, 'bien')
         return s
 
     def accion(self, hilo, text):
@@ -36,14 +53,15 @@ class Diagrama:
         return a
 
     def start(self, hilo, name):
-        s = Start(hilo, name)
         creado = Hilo(name)
+        s = Start(hilo, creado)
         creado.x = self.n_hilos
         creado.y = hilo.t
         hilo.t += 1
         creado.t = hilo.t
         self.n_hilos += 1
         hilo.objetos.append(s)
+        creado.inicio_tramo(hilo.t, 'bien')
         self.acciones.append(s)
         self.hilos.append(creado)
         return creado
@@ -101,14 +119,13 @@ class Diagrama:
 
     def print_acciones(self):
         for accion in self.acciones:
-            print(f"Tipo: {accion}, origen: {accion.hilo.nombre}, t: {accion.t}")
+            print(f"Tipo: {type(accion).__name__}, origen: {accion.hilo.nombre}, t: {accion.t}")
+
 
     def ordenar(self):
         self.acciones.sort(key=lambda accion: accion.t)
-        for accion in self.acciones:
-            print(f"Tipo: {accion}, origen: {accion.hilo}, t: {accion.t}")
 
-    def ajustarTiempos(self):
+    def procesar(self):
         '''
         Se ordenan las acciones y se recorren una a una, siempre y cuando no
         estén bloqueadas. Se bloquean con awaits y joins, y se liberan con
@@ -116,102 +133,228 @@ class Diagrama:
         las acciones de la cola vuelven a la lista global pero con tiempo actualizado
         t_nuevo = t_desbloqueo + t_antiguo 
         '''
-        bloqueados = []         # Lista de hilos bloqueados
-        cola = []               # Cola de acciones
+        bloqueados = []         # Lista de hilos bloqueados    
         final = []              # Lista de acciones finales
         t = 0                   # Tiempo actual
         copia = self.acciones    # Copia de las acciones para no modificar la original
-        while copia and t < 15:
-            print(f"\nTIEMPO: {t}")
-            print("HILOSBLOQUEADS: ")
-            for hilo in bloqueados:
-                print(hilo.nombre)
-            print("COLA: ")
-            for accion in cola:
-                print(f"TIPO: {accion}, ORIGEN: {accion.hilo.nombre}, TIEMPO: {accion.t}")
-            print("COPIA:")
-            for accion in copia:
-                print(f"TIPO: {accion}, ORIGEN: {accion.hilo.nombre}, TIEMPO: {accion.t}")
-            print("FINAL:")
-            for accion in final:
-                print(f"TIPO: {accion}, ORIGEN: {accion.hilo.nombre}, TIEMPO: {accion.t}")
+        # Mientras haya acciones con accion.t > t en copia
+        while self.acciones_por_procesar(t,copia):
+            procesadas = []
             for accion in copia:
                 # Cada accion que se ejecuta en t
                 if accion.t == t:
-                    # Si la accion no esta bloqueada
-                    print(f"ACCION.HILO: {accion.hilo.nombre}")
-                    if not(accion.hilo in bloqueados):
-                        final.append(accion)
-                        # Await: Si hay recursos, resta.
-                        # Si no hay recursos, bloquea y encola.
-                        if isinstance(accion, Await):
-                            if accion.semaforo.recursos > 0:
-                                accion.semaforo.recursos -= 1
-                            else:
-                                bloqueados.append(accion.hilo)
-                        # Signal: Si hay hilos bloqueados, desbloquea al primero.
-                        # Si no hay hilos bloqueados, libera recurso.
-                        if isinstance(accion, Signal):
-                            if bloqueados:
-                                hilo = bloqueados.pop(0)
-                                for desbloqueada in cola:
-                                    if desbloqueada.hilo == hilo:
-                                        desbloqueada.t = t + (desbloqueada.t_bloqueo - hilo.bloqueado_en)
-                                        copia.append(desbloqueada)
-                            else:
-                                accion.semaforo.recursos += 1
-                        # Join: Si el hilo al que se une no ha terminado, bloquea.
-                        # Si ha terminado, sigue.
-                        if isinstance(accion, Join):
-                            # Si NO ha ocurrido un end de el hilo al que se une, bloquea
-                            if not(any(isinstance(obj, End) and obj.hilo == accion.destino for obj in final)):
-                                #print(f"Bloqueando a: {accion.hilo.nombre}")
-                                accion.hilo.bloqueado_en = t+1
-                                bloqueados.append(accion.hilo)
-                                #print(f"Cola: {cola}")
-                                #print(f"Bloqueados: {bloqueados}")
-                        # End: Libera recurso
-                        if isinstance(accion, End):
-                            '''
-                            Para cada hilo bloqueado, si es un hilo que esperaba a este lo desbloquea.
-                            Luego recorre la cola y las acciones desbloqueadas vuelven a la lista global
-                            '''
-                            for hilo in bloqueados:
-                                if hilo in accion.hilo.joinedby:
-                                    print(f"Desbloqueando a: {hilo.nombre} en tiempo: {t}")     
-                                    bloqueados.remove(hilo)
-                                    max = 0
-                                    eliminar_de_cola = []   
-                                    agregar_a_copia = []   
-                                    for desbloqueada in cola:
-                                        print(f"TIPO: {desbloqueada}, ORIGEN: {desbloqueada.hilo.nombre}, TIEMPO: {desbloqueada.t}")
-                                        if desbloqueada.hilo == hilo:
-                                            if max < (desbloqueada.t_bloqueo - hilo.bloqueado_en + 1):
-                                                max = desbloqueada.t_bloqueo - hilo.bloqueado_en 
-                                            desbloqueada.t = t + (desbloqueada.t_bloqueo - hilo.bloqueado_en) + 1
-                                            if desbloqueada.t == t:
-                                                print("TIEMPO ERA GUAL, REVISEN")
-                                                desbloqueada.t += 1
-                                            agregar_a_copia.append(desbloqueada)
-                                            print("APEDADO")
-                                            eliminar_de_cola.append(desbloqueada)
-                                            print(f"Accion que vuelve: Tipo: {desbloqueada}, origen: {desbloqueada.hilo.nombre}, t: {desbloqueada.t}") 
-                                    for accion in copia:
-                                        if accion.hilo == hilo:
-                                            accion.t = accion.t + max
-                                    for accion in eliminar_de_cola:
-                                        cola.remove(accion) 
-                                    for accion in agregar_a_copia:
-                                        copia.append(accion)
-                        copia.remove(accion)
-                    # Si está bloqueada se encola
-                    else:
-                        accion.t_bloqueo = t
-                        cola.append(accion)
-                        print(f"ENCOLANDO; Accion: {accion}, origen: {accion.hilo.nombre}, t: {accion.t}, t_bloqueo: {accion.t_bloqueo}")
-                        copia.remove(accion)
-            t += 1
-        self.acciones = final
-        print(f"COLAFINAL: {cola}")
-                        
 
+                    # Si la accion no esta bloqueada
+                    if not (accion.hilo in bloqueados or any(accion.hilo in semaforo.bloqueados for semaforo in self.semaforos)):
+                        final.append(accion)
+                        procesadas.append(accion)
+
+                        match accion:
+                            # Start ajusta tiempos de hilo creado
+                            # Cada objeto del hilo, si coincide con un objeto
+                            # de copia, se le añade el tiempo de creacion
+                            case Start():
+                                for enHilo in accion.destino.objetos:
+                                    for acc in copia:
+                                        if acc == enHilo:
+                                            acc.t += t - accion.destino.y
+                                  
+                            # Hilo que llama await consume recurso. Si no hay recursos,
+                            # Se bloquea
+                            case Await():
+                                if accion.semaforo.recursos > 0:
+                                    accion.semaforo.cambiar_semaforo(accion.semaforo, accion.semaforo.recursos - 1, t)
+                                    accion.semaforo.recursos -= 1
+                                    accion.recurso_final = accion.semaforo.recursos
+                                else:
+                                    accion.hilo.bloqueado_desde = t
+                                    accion.semaforo.bloqueados.append(accion.hilo)
+                                    accion.hilo.fin_tramo(t)
+                                    accion.hilo.inicio_tramo(t,'bloq')
+                                    accion.cola_final = accion.semaforo.bloqueados
+                            
+                            # Si hay bloqueados, libera uno. Si no incrementa
+                            # Recursos de semaforo      
+                            case Signal():
+                                if accion.semaforo.bloqueados:
+                                    self.desbloquear_sem(accion.semaforo.bloqueados.pop(0), copia, t)
+                                    accion.cola_final = accion.semaforo.bloqueados
+                                else:
+                                    accion.semaforo.cambiar_semaforo(accion.semaforo, accion.semaforo.recursos + 1, t)
+                                    accion.semaforo.recursos += 1
+                                    accion.recurso_final = accion.semaforo.recursos
+
+                            # Hilo que hace Join se bloquea a menos que ya haya habido
+                            # un end. Recorre los joinedby del hilo que hace join
+                            case Join():
+                                if not accion.destino.acabado:
+                                    accion.hilo.bloqueado_desde = t
+                                    bloqueados.append(accion.hilo)
+                                    accion.hilo.fin_tramo(t)
+                                    accion.hilo.inicio_tramo(t,'bloq')
+
+                            # Pone estado de hilo a acabado, y libera hilos que estan esperando
+                            case End():
+                                accion.hilo.acabado = True
+                                accion.hilo.fin_tramo(t)
+                                for esperando in accion.hilo.joinedby:
+                                    self.desbloquear(esperando, bloqueados, copia, t)
+            copia = [accion for accion in copia if accion not in procesadas]
+            t += 1
+        print("TRAMOS:")
+        for h in self.hilos:
+            h.imprimir_tramos()
+        print("Semaforo")
+        for s in self.semaforos:
+            s.imprimir_tramos()
+            
+        self.acciones = final
+        self.ordenar()
+                        
+    def acciones_por_procesar(self, t, acciones):
+        return any(accion.t >= t for accion in acciones)
+    
+    def desbloquear(self, hilo, lista, copia, t):
+        if hilo in lista:
+            for accion in (acc for acc in copia if acc.hilo == hilo):
+                accion.t += t - hilo.bloqueado_desde
+            lista.remove(hilo)
+            hilo.fin_tramo(t)
+            hilo.inicio_tramo(t,'bien')
+
+    def desbloquear_sem(self, hilo, copia, t):
+        for accion in (acc for acc in copia if acc.hilo == hilo):
+                accion.t += t - hilo.bloqueado_desde
+        hilo.fin_tramo(t)
+        hilo.inicio_tramo(t,'bien')
+
+    def agregar_tramos(self):
+        self.elementos = self.acciones[:]
+
+        for h in self.hilos:
+            for t in h.tramos:
+                t.hilo = h
+                self.elementos.append(t)
+        
+        for s in self.semaforos:
+            for t in s.tramos:
+                t.hilo = s
+                self.elementos.append(t)
+
+        self.elementos.sort(key=lambda x: x.t)
+    
+    def prueba(self):
+        self.agregar_tramos()
+        self.labels_y_semaforos()
+        for e in self.elementos:
+            if isinstance(e,Tramo):
+                print(f"TRAMO: hilo: {e.hilo.nombre}, inicio: {e.t}, fin: {e.final}, tipo: {e.tipo}")
+            else:
+                print(f"Tipo: {type(e).__name__}, hilo: {e.hilo.nombre}, t: {e.t}")
+
+    def a_manim(self):
+        self.agregar_tramos()
+        self.labels_y_semaforos()
+        t = 0
+        while self.acciones_por_procesar(t, self.elementos):
+            print(f"t = {t}")
+            grupo = VGroup()
+            for e in (elems for elems in self.elementos if elems.t == t):
+                match e:
+                    case Accion():
+                        print(f"Accion")
+                        grupo.add(self.a_manim_accion(e))
+                    case Start():
+                        print(f"Start")
+                        grupo.add(self.a_manim_start(e))
+                    case Sleep():
+                        grupo.add(self.a_manim_sleep(e))
+                    case Join():
+                        grupo.add(self.a_manim_join(e))
+                    case Await():
+                        grupo.add(self.a_manim_await(e))
+                    case Signal():
+                        grupo.add(self.a_manim_signal(e))
+                    case Tramo():
+                        grupo.add(self.a_manim_tramo(e))
+                    case End():
+                        grupo.add(self.a_manim_end(e))
+            self.grupos.append(grupo)
+            t += 1
+        return self.grupos
+
+    def labels_y_semaforos(self):
+        grupo = VGroup()
+        for h in self.new_hilos:
+            l = Text(f"{h.nombre}")
+            visuales_nombres(l)
+            l.move_to([h.x *3, 1, 2])
+            grupo.add(l)
+        for s in self.semaforos:
+            l = Text(f"{s.nombre}")
+            visuales_nombres(l)
+            l.move_to([self.n_hilos * 3 + s.x * 2, 1, 2])
+            grupo.add(l)
+        self.grupos.append(grupo)
+
+    def a_manim_accion(self, accion):
+        label = Text(f"{accion.texto}")
+        visuales_accion(label)
+        label.move_to([(accion.hilo.x * 3), -accion.t, 2])
+        caja = SurroundingRectangle(label)
+        visuales_caja_accion(caja)
+        return VGroup(label, caja)
+
+    def a_manim_start(self,start):
+        label = Text(f"{start.hilo.nombre}.start({start.destino.nombre})")
+        visuales_accion(label)
+        label.move_to([(start.hilo.x * 3), -start.t, 2])
+        caja = SurroundingRectangle(label)
+        visuales_caja_accion(caja)
+        flecha = crear_flecha(caja.get_right(), [start.destino.x, -start.t, 0])
+        #visuales_flecha(flecha)
+        return VGroup(label, caja, flecha)
+
+    def a_manim_sleep(self, sleep):
+        label = Text(f"{sleep.hilo.nombre}.sleep({sleep.duracion})")
+        visuales_accion(label)
+        label.move_to([(sleep.hilo.x * 3), -sleep.t, 2])
+        caja = SurroundingRectangle(label)
+        visuales_caja_accion(caja)
+        return VGroup(label, caja)
+
+    def a_manim_join(self, join):
+        label = Text(f"{join.hilo.nombre}.join({join.destino.nombre})")
+        visuales_accion(label)
+        label.move_to([(join.hilo.x * 3), -join.t, 2])
+        caja = SurroundingRectangle(label)
+        visuales_caja_accion(caja)
+        return VGroup(label, caja)
+
+    def a_manim_await(self, wait):
+        label = Text(f"{wait.hilo.nombre}.await({wait.semaforo.nombre})")
+        visuales_accion(label)
+        label.move_to([(wait.hilo.x * 3), -wait.t, 2])
+        caja = SurroundingRectangle(label)
+        visuales_caja_accion(caja)
+        return VGroup(label, caja)
+
+    def a_manim_signal(self, signal):
+        label = Text(f"{signal.hilo.nombre}.signal({signal.semaforo.nombre})")
+        visuales_accion(label)
+        label.move_to([(signal.hilo.x * 3), -signal.t, 2])
+        caja = SurroundingRectangle(label)
+        visuales_caja_accion(caja)
+        return VGroup(label, caja)
+
+    def a_manim_tramo(self, tramo):
+        c = visuals["color_tramo_bien"] if tramo.tipo == 'bien' else visuals["color_tramo_bloq"]
+
+        if tramo.final:
+            line = Line(start=[tramo.hilo.x * 3, -tramo.t, 0], end=[tramo.hilo.x * 3, -tramo.final, 0], color=c)
+        else:
+            line = Line(start=[tramo.hilo.x * 3, -tramo.t, 0], end=[tramo.hilo.x * 3, -tramo.t-50, 0], color=c)
+        return line
+
+    def a_manim_end(self, end):
+        return Dot()

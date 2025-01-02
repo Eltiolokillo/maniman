@@ -8,5 +8,9 @@ visuals ={
     "color_text" : "WHITE",
     "color_box" : "WHITE",
     "borde_box" : 1,
-    "color_flecha" : "WHITE"
+    "color_flecha" : "WHITE",
+    "green" : "",
+    "red" : "",
+    "color_tramo_bien": "WHITE",
+    "color_tramo_bloq": "RED",
 }
