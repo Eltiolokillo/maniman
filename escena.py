@@ -8,7 +8,7 @@ class Escena(MovingCameraScene):
         
 
     def construct(self):
-        self.play(Create(NumberPlane()))
+        #self.play(Create(NumberPlane()))
         d1 = Diagrama()
         main = d1.new_thread("main")
         a = d1.start(main, "a")
@@ -29,7 +29,8 @@ class Escena(MovingCameraScene):
         d1.end(b)
 
         d1.procesar()
-        
+
+        d1.print_acciones()
 
         g = d1.a_manim()
 

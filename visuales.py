@@ -27,9 +27,9 @@ def crear_flecha(s,e,color=None):
         buff=0,
         stroke_color=c,
         stroke_width=1,
-        dash_length=0.3,
+        dash_length=0.1,
         dashed_ratio=0.5,
-        tip_length=0.2,
+        tip_length=0.1,
         tip_style={  
             "color": c,
             "stroke_width": 1,

@@ -38,9 +38,9 @@ class Diagrama:
         return hilo
 
     def new_semaphore(self, name, value):
-        self.n_semaforos += 1
         s = Semaforo(name, value)
         s.x = self.n_semaforos
+        self.n_semaforos += 1
         self.semaforos.append(s)
         s.inicio_tramo(0, 'bien')
         return s
@@ -61,7 +61,6 @@ class Diagrama:
         creado.t = hilo.t
         self.n_hilos += 1
         hilo.objetos.append(s)
-        creado.inicio_tramo(hilo.t, 'bien')
         self.acciones.append(s)
         self.hilos.append(creado)
         return creado
@@ -154,6 +153,7 @@ class Diagrama:
                             # Cada objeto del hilo, si coincide con un objeto
                             # de copia, se le añade el tiempo de creacion
                             case Start():
+                                accion.destino.inicio_tramo(t, 'bien')
                                 for enHilo in accion.destino.objetos:
                                     for acc in copia:
                                         if acc == enHilo:
@@ -237,6 +237,7 @@ class Diagrama:
                 self.elementos.append(t)
         
         for s in self.semaforos:
+            s.x += self.n_hilos
             for t in s.tramos:
                 t.hilo = s
                 self.elementos.append(t)
@@ -293,14 +294,14 @@ class Diagrama:
         for s in self.semaforos:
             l = Text(f"{s.nombre}")
             visuales_nombres(l)
-            l.move_to([self.n_hilos * 3 + s.x * 2, 1, 2])
+            l.move_to([s.x * 3, 1, 2])
             grupo.add(l)
         self.grupos.append(grupo)
 
     def a_manim_accion(self, accion):
         label = Text(f"{accion.texto}")
         visuales_accion(label)
-        label.move_to([(accion.hilo.x * 3), -accion.t, 2])
+        label.move_to([(accion.hilo.x * 3), -accion.t*0.5, 2])
         caja = SurroundingRectangle(label)
         visuales_caja_accion(caja)
         return VGroup(label, caja)
@@ -308,17 +309,20 @@ class Diagrama:
     def a_manim_start(self,start):
         label = Text(f"{start.hilo.nombre}.start({start.destino.nombre})")
         visuales_accion(label)
-        label.move_to([(start.hilo.x * 3), -start.t, 2])
+        label.move_to([(start.hilo.x * 3), -start.t*0.5, 2])
         caja = SurroundingRectangle(label)
         visuales_caja_accion(caja)
-        flecha = crear_flecha(caja.get_right(), [start.destino.x, -start.t, 0])
+        flecha = crear_flecha(caja.get_right(), [start.destino.x * 3, -start.t*0.5, 0])
+        label_creado = Text(f"{start.destino.nombre}")
+        visuales_nombres(label_creado)
+        label_creado.move_to([start.destino.x * 3, -start.t*0.5 + 0.5, 2])
         #visuales_flecha(flecha)
-        return VGroup(label, caja, flecha)
+        return VGroup(label, caja, flecha, label_creado)
 
     def a_manim_sleep(self, sleep):
         label = Text(f"{sleep.hilo.nombre}.sleep({sleep.duracion})")
         visuales_accion(label)
-        label.move_to([(sleep.hilo.x * 3), -sleep.t, 2])
+        label.move_to([(sleep.hilo.x * 3), -sleep.t*0.5, 2])
         caja = SurroundingRectangle(label)
         visuales_caja_accion(caja)
         return VGroup(label, caja)
@@ -326,7 +330,7 @@ class Diagrama:
     def a_manim_join(self, join):
         label = Text(f"{join.hilo.nombre}.join({join.destino.nombre})")
         visuales_accion(label)
-        label.move_to([(join.hilo.x * 3), -join.t, 2])
+        label.move_to([(join.hilo.x * 3), -join.t*0.5, 2])
         caja = SurroundingRectangle(label)
         visuales_caja_accion(caja)
         return VGroup(label, caja)
@@ -334,7 +338,7 @@ class Diagrama:
     def a_manim_await(self, wait):
         label = Text(f"{wait.hilo.nombre}.await({wait.semaforo.nombre})")
         visuales_accion(label)
-        label.move_to([(wait.hilo.x * 3), -wait.t, 2])
+        label.move_to([(wait.hilo.x * 3), -wait.t*0.5, 2])
         caja = SurroundingRectangle(label)
         visuales_caja_accion(caja)
         return VGroup(label, caja)
@@ -342,19 +346,27 @@ class Diagrama:
     def a_manim_signal(self, signal):
         label = Text(f"{signal.hilo.nombre}.signal({signal.semaforo.nombre})")
         visuales_accion(label)
-        label.move_to([(signal.hilo.x * 3), -signal.t, 2])
+        label.move_to([(signal.hilo.x * 3), -signal.t*0.5, 2])
         caja = SurroundingRectangle(label)
         visuales_caja_accion(caja)
         return VGroup(label, caja)
 
     def a_manim_tramo(self, tramo):
-        c = visuals["color_tramo_bien"] if tramo.tipo == 'bien' else visuals["color_tramo_bloq"]
+        if isinstance(tramo.hilo, Semaforo):
+            c = visuals["green"] if tramo.tipo == 'bien' else visuals["red"]
+        else:
+            c = visuals["color_tramo_bien"] if tramo.tipo == 'bien' else visuals["red"]
 
         if tramo.final:
-            line = Line(start=[tramo.hilo.x * 3, -tramo.t, 0], end=[tramo.hilo.x * 3, -tramo.final, 0], color=c)
+            line = Line(start=[tramo.hilo.x * 3, -tramo.t*0.5, 0], end=[tramo.hilo.x * 3, -tramo.final*0.5, 0], color=c)
         else:
-            line = Line(start=[tramo.hilo.x * 3, -tramo.t, 0], end=[tramo.hilo.x * 3, -tramo.t-50, 0], color=c)
+            line = Line(start=[tramo.hilo.x * 3, -tramo.t*0.5, 0], end=[tramo.hilo.x * 3, -tramo.t-50, 0], color=c)
         return line
 
     def a_manim_end(self, end):
-        return Dot()
+        g = VGroup()
+        for j in end.hilo.joinedby:
+            flecha = crear_flecha([end.hilo.x*3, -end.t*0.5, 0],[j.x*3, -end.t*0.5, 0])
+            g.add(flecha)
+        return g
+
