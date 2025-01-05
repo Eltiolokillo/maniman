@@ -163,26 +163,32 @@ class Diagrama:
                             # Se bloquea
                             case Await():
                                 if accion.semaforo.recursos > 0:
-                                    accion.semaforo.cambiar_semaforo(accion.semaforo, accion.semaforo.recursos - 1, t)
+                                    accion.semaforo.cambiar_semaforo(accion.semaforo.recursos - 1, t, accion)
                                     accion.semaforo.recursos -= 1
                                     accion.recurso_final = accion.semaforo.recursos
+                                    accion.cola_final = accion.semaforo.bloqueados[:]
                                 else:
                                     accion.hilo.bloqueado_desde = t
                                     accion.semaforo.bloqueados.append(accion.hilo)
                                     accion.hilo.fin_tramo(t)
                                     accion.hilo.inicio_tramo(t,'bloq')
-                                    accion.cola_final = accion.semaforo.bloqueados
+                                    accion.cola_final = accion.semaforo.bloqueados[:]
+                                    accion.recurso_final = accion.semaforo.recursos
                             
                             # Si hay bloqueados, libera uno. Si no incrementa
                             # Recursos de semaforo      
                             case Signal():
                                 if accion.semaforo.bloqueados:
-                                    self.desbloquear_sem(accion.semaforo.bloqueados.pop(0), copia, t)
-                                    accion.cola_final = accion.semaforo.bloqueados
+                                    d = accion.semaforo.bloqueados.pop(0)
+                                    self.desbloquear_sem(d, copia, t)
+                                    accion.cola_final = accion.semaforo.bloqueados[:]
+                                    accion.recurso_final = accion.semaforo.recursos
+                                    accion.desbloquea_a = d
                                 else:
-                                    accion.semaforo.cambiar_semaforo(accion.semaforo, accion.semaforo.recursos + 1, t)
+                                    accion.semaforo.cambiar_semaforo(accion.semaforo.recursos + 1, t, accion)
                                     accion.semaforo.recursos += 1
                                     accion.recurso_final = accion.semaforo.recursos
+                                    accion.cola_final = accion.semaforo.bloqueados[:]
 
                             # Hilo que hace Join se bloquea a menos que ya haya habido
                             # un end. Recorre los joinedby del hilo que hace join
@@ -341,7 +347,17 @@ class Diagrama:
         label.move_to([(wait.hilo.x * 3), -wait.t*0.5, 2])
         caja = SurroundingRectangle(label)
         visuales_caja_accion(caja)
-        return VGroup(label, caja)
+        c = visuals["green"] if wait.recurso_final > 0 else visuals["red"]
+        new_rec = Text(f"{wait.recurso_final}")
+        visuales_nombres(new_rec)
+        new_rec.move_to([wait.semaforo.x * 3, -wait.t*0.5, 2])
+        circle = Circle(color=c).move_to(new_rec.get_center_of_mass())
+        flecha = crear_flecha(caja.get_right(), circle.get_left(), c)
+        visuales_circulo(circle)
+        cola_text = self.cola_semaforo(wait)
+        visuales_nombres(cola_text)
+        cola_text.next_to(circle, RIGHT)
+        return VGroup(label, caja, flecha, new_rec, circle, cola_text)
 
     def a_manim_signal(self, signal):
         label = Text(f"{signal.hilo.nombre}.signal({signal.semaforo.nombre})")
@@ -349,7 +365,21 @@ class Diagrama:
         label.move_to([(signal.hilo.x * 3), -signal.t*0.5, 2])
         caja = SurroundingRectangle(label)
         visuales_caja_accion(caja)
-        return VGroup(label, caja)
+        c = visuals["green"] if signal.recurso_final > 0 else visuals["red"]
+        new_rec = Text(f"{signal.recurso_final}")
+        visuales_nombres(new_rec)
+        new_rec.move_to([signal.semaforo.x * 3, -signal.t*0.5, 2])
+        circle = Circle(color=c).move_to(new_rec.get_center_of_mass())
+        visuales_circulo(circle)
+        flecha = crear_flecha(caja.get_right(), circle.get_left(), c)
+        cola_text = self.cola_semaforo(signal)
+        visuales_nombres(cola_text)
+        cola_text.next_to(circle, RIGHT)
+        flecha_desbloqueo = None
+        if signal.desbloquea_a:
+            flecha_desbloqueo = crear_flecha([cola_text.get_x(), cola_text.get_y()-0.25, 0], [signal.desbloquea_a.x * 3, -signal.t*0.5-0.25, 0], visuals["green"])
+        elementos = [label, caja, flecha, new_rec, circle, cola_text, flecha_desbloqueo]
+        return VGroup(*[elem for elem in elementos if elem is not None])
 
     def a_manim_tramo(self, tramo):
         if isinstance(tramo.hilo, Semaforo):
@@ -369,4 +399,27 @@ class Diagrama:
             flecha = crear_flecha([end.hilo.x*3, -end.t*0.5, 0],[j.x*3, -end.t*0.5, 0])
             g.add(flecha)
         return g
+    
+    def cola_semaforo(self, accion):
+        if isinstance(accion, Await):
+            text = ""
+            for h in accion.cola_final:
+                text += f"{h.nombre} "
+            return Text(f"{text}", color=visuals["red"], disable_ligatures=True)
+        else:
+        # Construir texto con colores dinámicos
+            s = accion.desbloquea_a
+            t2c = {}  
+
+            text = ""
+
+            if s:
+                text += f"{s.nombre} "
+                t2c[s.nombre] = visuals["green"]
+
+            for h in accion.cola_final:
+                text += f"{h.nombre} "
+                t2c[h.nombre] = visuals["red"]
+
+        return Text(f"{text}", t2c=t2c, disable_ligatures=True)
 

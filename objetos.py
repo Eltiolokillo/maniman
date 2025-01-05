@@ -61,11 +61,13 @@ class Semaforo(Hilo):
         self.acciones_encola = []
         self.estado = 'libre'
 
-    def cambiar_semaforo(self, sem, nuevos_recursos, t):
+    def cambiar_semaforo(self, nuevos_recursos, t, accion):
         tipo_nuevo = "bien" if nuevos_recursos > 0 else "bloq"
+        ch = 1 if nuevos_recursos > 0 else -1
 
         # Si ultimo tramo es distinto al nuevo lo cambia
         if not self.tramos[-1].tipo == tipo_nuevo:
+            accion.cambio = ch
             # Finaliza el tramo actual y comienza uno nuevo con el nuevo tipo
             if self.tramos and self.tramos[-1].final is None:
                 self.fin_tramo(t)
@@ -100,7 +102,8 @@ class Await:
         self.semaforo = destino
         self.t_bloqueo = 0
         self.recurso_final = 0
-        self.cola_final = 0
+        self.cola_final = []
+        self.cambio = 0
 
 class Signal:
     def __init__(self, origen, destino):
@@ -109,7 +112,9 @@ class Signal:
         self.semaforo = destino
         self.t_bloqueo = 0
         self.recurso_final = 0
-        self.cola_final = 0
+        self.cola_final = []
+        self.cambio = 0
+        self.desbloquea_a = None
 
 class Join:
     def __init__(self, origen, destino):

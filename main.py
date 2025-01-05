@@ -42,7 +42,8 @@ def main():
 
     d1.procesar()
 
-    d1.prueba()
+    g = d1.a_manim()
+    #d1.prueba()
     
     # Renderizar la escena
     #scene = Escena(g)
