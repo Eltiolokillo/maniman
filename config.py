@@ -12,5 +12,6 @@ visuals ={
     "green" : "#008000",
     "red" : "#FF0000",
     "color_tramo_bien": "WHITE",
-    "color_tramo_bloq": "RED",
+    "color_tramo_bloq": "#FF0000",
+    "color_tramo_sleep": "YELLOW"
 }

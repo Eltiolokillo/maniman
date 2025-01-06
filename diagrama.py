@@ -153,16 +153,25 @@ class Diagrama:
                             # Cada objeto del hilo, si coincide con un objeto
                             # de copia, se le añade el tiempo de creacion
                             case Start():
+                                accion.hilo.fin_tramo(t)
+                                accion.hilo.inicio_tramo(t, 'bien')
                                 accion.destino.inicio_tramo(t, 'bien')
                                 for enHilo in accion.destino.objetos:
                                     for acc in copia:
                                         if acc == enHilo:
                                             acc.t += t - accion.destino.y
-                                  
+                            
+                            # Sleep ajusta color de tramo
+                            case Sleep():
+                                accion.hilo.fin_tramo(t)
+                                accion.hilo.inicio_tramo(t, 'sleep')
+
                             # Hilo que llama await consume recurso. Si no hay recursos,
                             # Se bloquea
                             case Await():
                                 if accion.semaforo.recursos > 0:
+                                    accion.hilo.fin_tramo(t)
+                                    accion.hilo.inicio_tramo(t, 'bien')
                                     accion.semaforo.cambiar_semaforo(accion.semaforo.recursos - 1, t, accion)
                                     accion.semaforo.recursos -= 1
                                     accion.recurso_final = accion.semaforo.recursos
@@ -178,6 +187,8 @@ class Diagrama:
                             # Si hay bloqueados, libera uno. Si no incrementa
                             # Recursos de semaforo      
                             case Signal():
+                                accion.hilo.fin_tramo(t)
+                                accion.hilo.inicio_tramo(t, 'bien')
                                 if accion.semaforo.bloqueados:
                                     d = accion.semaforo.bloqueados.pop(0)
                                     self.desbloquear_sem(d, copia, t)
@@ -198,6 +209,9 @@ class Diagrama:
                                     bloqueados.append(accion.hilo)
                                     accion.hilo.fin_tramo(t)
                                     accion.hilo.inicio_tramo(t,'bloq')
+                                else:
+                                    accion.hilo.fin_tramo(t)
+                                    accion.hilo.inicio_tramo(t, 'bien')
 
                             # Pone estado de hilo a acabado, y libera hilos que estan esperando
                             case End():
@@ -205,6 +219,10 @@ class Diagrama:
                                 accion.hilo.fin_tramo(t)
                                 for esperando in accion.hilo.joinedby:
                                     self.desbloquear(esperando, bloqueados, copia, t)
+
+                            case _:
+                                accion.hilo.fin_tramo(t)
+                                accion.hilo.inicio_tramo(t, 'bien')
             copia = [accion for accion in copia if accion not in procesadas]
             t += 1
         print("TRAMOS:")
@@ -235,18 +253,88 @@ class Diagrama:
         hilo.inicio_tramo(t,'bien')
 
     def agregar_tramos(self):
+        max_t = max(accion.t for accion in self.acciones) + 1
+
         self.elementos = self.acciones[:]
 
         for h in self.hilos:
-            for t in h.tramos:
-                t.hilo = h
-                self.elementos.append(t)
-        
+            for tramo in h.tramos:
+                tramo.hilo = h
+
+                if tramo.final is not None:
+                    
+                    start = tramo.t
+                    end = tramo.final
+
+                    while start < end:
+                        next_t = min(start + 1, end)
+
+                        sub_tramo = Tramo(start, tramo.tipo)
+                        sub_tramo.final = next_t
+                        sub_tramo.hilo = h
+
+                        self.elementos.append(sub_tramo)
+
+                        start = next_t
+
+                else:
+                    start = tramo.t
+
+                    while start < max_t:
+                        next_t = min(start + 1, max_t)
+
+                        sub_tramo = Tramo(start, tramo.tipo)
+                        sub_tramo.final = next_t
+                        sub_tramo.hilo = h
+
+                        self.elementos.append(sub_tramo)
+
+                        start = next_t
+
+                    sin_fin = Tramo(max_t, tramo.tipo)
+                    sin_fin.hilo = h
+                    sin_fin.final = None
+                    self.elementos.append(sin_fin)
+
         for s in self.semaforos:
             s.x += self.n_hilos
-            for t in s.tramos:
-                t.hilo = s
-                self.elementos.append(t)
+            for tramo in s.tramos:
+                tramo.hilo = s
+
+                if tramo.final is not None:
+                    
+                    start = tramo.t
+                    end = tramo.final
+
+                    while start < end:
+                        next_t = min(start + 1, end)
+
+                        sub_tramo = Tramo(start, tramo.tipo)
+                        sub_tramo.final = next_t
+                        sub_tramo.hilo = s
+
+                        self.elementos.append(sub_tramo)
+
+                        start = next_t
+
+                else:
+                    start = tramo.t
+
+                    while start < max_t:
+                        next_t = min(start + 1, max_t)
+
+                        sub_tramo = Tramo(start, tramo.tipo)
+                        sub_tramo.final = next_t
+                        sub_tramo.hilo = s
+
+                        self.elementos.append(sub_tramo)
+
+                        start = next_t
+
+                    sin_fin = Tramo(max_t, tramo.tipo)
+                    sin_fin.hilo = s
+                    sin_fin.final = None
+                    self.elementos.append(sin_fin)
 
         self.elementos.sort(key=lambda x: x.t)
     
@@ -302,6 +390,7 @@ class Diagrama:
             visuales_nombres(l)
             l.move_to([s.x * 3, 1, 2])
             grupo.add(l)
+        
         self.grupos.append(grupo)
 
     def a_manim_accion(self, accion):
@@ -352,8 +441,8 @@ class Diagrama:
         visuales_nombres(new_rec)
         new_rec.move_to([wait.semaforo.x * 3, -wait.t*0.5, 2])
         circle = Circle(color=c).move_to(new_rec.get_center_of_mass())
-        flecha = crear_flecha(caja.get_right(), circle.get_left(), c)
         visuales_circulo(circle)
+        flecha = crear_flecha(caja.get_right(), circle.get_left(), visuals["red"])
         cola_text = self.cola_semaforo(wait)
         visuales_nombres(cola_text)
         cola_text.next_to(circle, RIGHT)
@@ -371,7 +460,7 @@ class Diagrama:
         new_rec.move_to([signal.semaforo.x * 3, -signal.t*0.5, 2])
         circle = Circle(color=c).move_to(new_rec.get_center_of_mass())
         visuales_circulo(circle)
-        flecha = crear_flecha(caja.get_right(), circle.get_left(), c)
+        flecha = crear_flecha(caja.get_right(), circle.get_left(), visuals["green"])
         cola_text = self.cola_semaforo(signal)
         visuales_nombres(cola_text)
         cola_text.next_to(circle, RIGHT)
@@ -385,7 +474,12 @@ class Diagrama:
         if isinstance(tramo.hilo, Semaforo):
             c = visuals["green"] if tramo.tipo == 'bien' else visuals["red"]
         else:
-            c = visuals["color_tramo_bien"] if tramo.tipo == 'bien' else visuals["red"]
+            if tramo.tipo == 'bien':
+                c = visuals["color_tramo_bien"]
+            if tramo.tipo == 'bloq':
+                c = visuals["color_tramo_bloq"]
+            if tramo.tipo == 'sleep':
+                c = visuals["color_tramo_sleep"]
 
         if tramo.final:
             line = Line(start=[tramo.hilo.x * 3, -tramo.t*0.5, 0], end=[tramo.hilo.x * 3, -tramo.final*0.5, 0], color=c)

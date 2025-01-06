@@ -17,7 +17,6 @@ def crear_flecha(s,e,col=None):
     else:
         c = visuals["color_flecha"]
 
-
     f = DashedLine(
         start=s,
         end=e,
