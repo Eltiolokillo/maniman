@@ -467,6 +467,7 @@ class Diagrama:
         flecha_desbloqueo = None
         if signal.desbloquea_a:
             flecha_desbloqueo = crear_flecha([cola_text.get_x(), cola_text.get_y()-0.25, 0], [signal.desbloquea_a.x * 3, -signal.t*0.5-0.25, 0], visuals["green"])
+            puntito = Dot(color=visuals["green"]).move_to(flecha_desbloqueo.get_start())
         elementos = [label, caja, flecha, new_rec, circle, cola_text, flecha_desbloqueo]
         return VGroup(*[elem for elem in elementos if elem is not None])
 
