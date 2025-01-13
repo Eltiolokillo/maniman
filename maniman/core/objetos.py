@@ -74,42 +74,39 @@ class Semaforo(Hilo):
                 self.fin_tramo(t)
                 self.inicio_tramo(t, tipo_nuevo)
 
-
-class Unaria:
-    def __init__(self, hilo, texto):
+class Accion:
+    def __init__(self, hilo, t):
         self.hilo = hilo
-        self.t = hilo.t
+        self.t = t
+        self.t_bloqueo = 0
+
+class Unaria(Accion):
+    def __init__(self, hilo, texto):
+        super().__init__(hilo, hilo.t)
         self.texto = texto
-        self.t_bloqueo = 0
 
-class Start:
+class Start(Accion):
     def __init__(self, origen, destino):
-        self.hilo = origen
-        self.t = origen.t
+        super().__init__(origen, origen.t)
         self.destino = destino
-        self.t_bloqueo = 0
 
-class Sleep:
+class Sleep(Accion):
     def __init__(self, origen, d):
-        self.hilo = origen
-        self.t = origen.t
+        super().__init__(origen, origen.t)
         self.duracion = d
-        self.t_bloqueo = 0
 
-class Await:
+class Await(Accion):
     def __init__(self, origen, destino):
-        self.hilo = origen
-        self.t = origen.t
+        super().__init__(origen, origen.t)
         self.semaforo = destino
         self.t_bloqueo = 0
         self.recurso_final = 0
         self.cola_final = []
         self.cambio = 0
 
-class Signal:
+class Signal(Accion):
     def __init__(self, origen, destino):
-        self.hilo = origen
-        self.t = origen.t
+        super().__init__(origen, origen.t)
         self.semaforo = destino
         self.t_bloqueo = 0
         self.recurso_final = 0
@@ -117,15 +114,11 @@ class Signal:
         self.cambio = 0
         self.desbloquea_a = None
 
-class Join:
+class Join(Accion):
     def __init__(self, origen, destino):
-        self.hilo = origen
-        self.t = origen.t
+        super().__init__(origen, origen.t)
         self.destino = destino
-        self.t_bloqueo = 0
 
-class End:
+class End(Accion):
     def __init__(self, origen):
-        self.hilo = origen
-        self.t = origen.t
-        self.t_bloqueo = 0
+        super().__init__(origen, origen.t)
