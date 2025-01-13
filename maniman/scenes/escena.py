@@ -17,7 +17,6 @@ class Escena(MovingCameraScene):
         x_min = float('inf')
         x_max = float('-inf')
 
-        todoJunto = VGroup()
 
         for grupo in self.g:
             for elem in grupo:
@@ -25,7 +24,7 @@ class Escena(MovingCameraScene):
                 right_x = elem.get_right()[0]
                 x_min = min(x_min, left_x)
                 x_max = max(x_max, right_x)
-                todoJunto.add(elem)
+                self.todoJunto.add(elem)
 
         x_center = (x_min + x_max) / 2.0
 
@@ -45,6 +44,7 @@ class Escena(MovingCameraScene):
             self.wait(1)
 
         self.wait(2)
+
         
         
 
