@@ -2,10 +2,12 @@ from manim import *
 
 import copy
 
-from objetos import *
-from escena import *
-from visuales import *
+from maniman.core.objetos import *
+from maniman.scenes.escena import *
+from maniman.core.visuales import *
+from PIL import Image
 
+config.quality = "high_quality"
 
 class Diagrama:
     """
@@ -31,6 +33,7 @@ class Diagrama:
         hilo = Hilo(name)
         hilo.x = self.n_hilos
         hilo.y = 0
+        hilo.empezado = True
         self.n_hilos += 1
         self.hilos.append(hilo)
         self.new_hilos.append(hilo)
@@ -45,8 +48,8 @@ class Diagrama:
         s.inicio_tramo(0, 'bien')
         return s
 
-    def accion(self, hilo, text):
-        a = Accion(hilo, text)
+    def unaria(self, hilo, text):
+        a = Unaria(hilo, text)
         hilo.objetos.append(a)
         self.acciones.append(a)
         hilo.t += 1
@@ -144,8 +147,14 @@ class Diagrama:
                 if accion.t == t:
 
                     # Si la accion no esta bloqueada
-                    if not (accion.hilo in bloqueados or any(accion.hilo in semaforo.bloqueados for semaforo in self.semaforos)):
+                    if (
+                        accion.hilo.empezado and  # El hilo debe estar en self.hilos
+                        not accion.hilo.acabado and  # El hilo debe estar en estado no acabado
+                        accion.hilo not in bloqueados and  # El hilo no debe estar en bloqueados
+                        not any(accion.hilo in semaforo.bloqueados for semaforo in self.semaforos)  # El hilo no debe estar bloqueado por ningún semáforo
+                    ):
                         final.append(accion)
+                        print(f"TIPO: {type(accion).__name__}, hilo: {accion.hilo.nombre}, t: {accion.t}")
                         procesadas.append(accion)
 
                         match accion:
@@ -153,6 +162,7 @@ class Diagrama:
                             # Cada objeto del hilo, si coincide con un objeto
                             # de copia, se le añade el tiempo de creacion
                             case Start():
+                                accion.destino.empezado = True
                                 accion.hilo.fin_tramo(t)
                                 accion.hilo.inicio_tramo(t, 'bien')
                                 accion.destino.inicio_tramo(t, 'bien')
@@ -225,12 +235,12 @@ class Diagrama:
                                 accion.hilo.inicio_tramo(t, 'bien')
             copia = [accion for accion in copia if accion not in procesadas]
             t += 1
-        print("TRAMOS:")
-        for h in self.hilos:
-            h.imprimir_tramos()
-        print("Semaforo")
-        for s in self.semaforos:
-            s.imprimir_tramos()
+        #print("TRAMOS:")
+        #for h in self.hilos:
+        #    h.imprimir_tramos()
+        #print("Semaforo")
+        #for s in self.semaforos:
+        #    s.imprimir_tramos()
             
         self.acciones = final
         self.ordenar()
@@ -352,15 +362,15 @@ class Diagrama:
         self.labels_y_semaforos()
         t = 0
         while self.acciones_por_procesar(t, self.elementos):
-            print(f"t = {t}")
+            #print(f"t = {t}")
             grupo = VGroup()
             for e in (elems for elems in self.elementos if elems.t == t):
                 match e:
-                    case Accion():
-                        print(f"Accion")
-                        grupo.add(self.a_manim_accion(e))
+                    case Unaria():
+                        #print(f"Accion")
+                        grupo.add(self.a_manim_unaria(e))
                     case Start():
-                        print(f"Start")
+                        #print(f"Start")
                         grupo.add(self.a_manim_start(e))
                     case Sleep():
                         grupo.add(self.a_manim_sleep(e))
@@ -393,7 +403,7 @@ class Diagrama:
         
         self.grupos.append(grupo)
 
-    def a_manim_accion(self, accion):
+    def a_manim_unaria(self, accion):
         label = Text(f"{accion.texto}")
         visuales_accion(label)
         label.move_to([(accion.hilo.x * 3), -accion.t*0.5, 2])
@@ -465,9 +475,11 @@ class Diagrama:
         visuales_nombres(cola_text)
         cola_text.next_to(circle, RIGHT)
         flecha_desbloqueo = None
+        punto = None
         if signal.desbloquea_a:
             flecha_desbloqueo = crear_flecha([cola_text.get_x(), cola_text.get_y()-0.25, 0], [signal.desbloquea_a.x * 3, -signal.t*0.5-0.25, 0], visuals["green"])
-        elementos = [label, caja, flecha, new_rec, circle, cola_text, flecha_desbloqueo]
+            punto = Dot(color=visuals["green"]).move_to(flecha_desbloqueo.get_start()).scale(0.5)
+        elementos = [label, caja, flecha, new_rec, circle, cola_text, flecha_desbloqueo, punto]
         return VGroup(*[elem for elem in elementos if elem is not None])
 
     def a_manim_tramo(self, tramo):
@@ -517,3 +529,18 @@ class Diagrama:
 
         return Text(f"{text}", t2c=t2c, disable_ligatures=True)
 
+    def crear_escena(self):
+        self.procesar()
+        print("HHAS")
+        self.print_acciones()
+        g = self.a_manim()
+        scene = Escena(g)
+        scene.render()
+
+    def guardar_imagen_final(scene, file_path="media\\videos\\1080p60\\escena.png"):
+        # Obtén el fotograma final de la escena
+        frame = scene.renderer.get_frame()
+        # Convierte el fotograma en una imagen de Pillow
+        image = Image.fromarray(frame)
+        # Guarda la imagen, sobrescribiendo el archivo si ya existe
+        image.save(file_path)

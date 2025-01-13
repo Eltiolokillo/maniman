@@ -1,20 +1,4 @@
-import json
-from manim import *
-from escena import *
-from objetos import *
-from modificador import *
-from diagrama import *
-from PIL import Image
-from diagrama import *
-
-from config import visuals
-
-import os
-
-# Calidad de la animación
-config.quality = "high_quality"
-
-grupo = VGroup()
+from maniman import *
 
 def main():
     d1 = Diagrama()
@@ -22,43 +6,30 @@ def main():
     a = d1.start(main, "a")
     s1 = d1.new_semaphore("s1", 1)
     b = d1.start(main, "b")
+    c = d1.start(main, "c")
     d1.join(main,a)
     d1.sleep(main, 2)
     d1.join(main,b)
-    d1.accion(main, "fin")
+    d1.join(main,c)
+
+    
             
     d1.await_(a, s1)
-    d1.sleep(a,3)
+    d1.sleep(a, 3)
     d1.signal(a, s1)
     d1.end(a)
 
     d1.await_(b, s1)
-    d1.signal(b,s1)
+    d1.unaria(b, "seccionCritica")
     d1.end(b)
 
-    d1.print_acciones()
+    d1.await_(c, s1)
+    d1.sleep(c, 2)
+    d1.signal(c,s1)
+    d1.end(c)
 
-    print("\nEYOOOO\n")
-
-    d1.procesar()
-
-    g = d1.a_manim()
-    #d1.prueba()
+    d1.crear_escena()
     
-    # Renderizar la escena
-    #scene = Escena(g)
-    #scene.render()
-    #guardar_imagen_final(scene, file_path="media\\videos\\1080p60\\escena.png")
-
-def guardar_imagen_final(scene, file_path="media\\videos\\1080p60\\escena.png"):
-    # Obtén el fotograma final de la escena
-    frame = scene.renderer.get_frame()
-    # Convierte el fotograma en una imagen de Pillow
-    image = Image.fromarray(frame)
-    # Guarda la imagen, sobrescribiendo el archivo si ya existe
-    image.save(file_path)
-
-
 
 if __name__ == "__main__":
     main()

@@ -13,6 +13,7 @@ class Hilo:
         self.t = 1
         self.total = VGroup()
         self.bloqueado_desde = 0
+        self.empezado = False
         self.acabado = False
         self.tramos = []
 
@@ -74,7 +75,7 @@ class Semaforo(Hilo):
                 self.inicio_tramo(t, tipo_nuevo)
 
 
-class Accion:
+class Unaria:
     def __init__(self, hilo, texto):
         self.hilo = hilo
         self.t = hilo.t

@@ -1,6 +1,6 @@
 from manim import *
 
-from config import visuals
+from maniman.config.config import visuals
 
 def visuales_nombres(nom):
     nom.scale(0.5).set_z_index(2)

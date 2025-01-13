@@ -1,0 +1,1 @@
+from .core.diagrama import Diagrama
